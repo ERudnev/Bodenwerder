@@ -67,6 +67,7 @@ namespace rmmr::scene::actor {
             resource::geometry::Runtime::Id geometry;
             resource::material::Runtime::Id material;
             base::maybe<resource::texpack::Runtime::Id> texpack;
+            base::maybe<resource::texpack::Runtime::Id> texpackLow;
             resource::texture::Runtime::Id heightField;
             resource::texture::Runtime::Id coverField;
             resource::texture::Runtime::Id farAlbedoField;
@@ -75,7 +76,7 @@ namespace rmmr::scene::actor {
             renderer::Count drawCount;
         };
         struct Actions : BaseActions {
-            static auto compose(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, const Shell&, std::span<const Patch>, float radius, float amplitude, float firstLodDistance, integer span, integer cells) -> optional<Quantum>;
+            static auto compose(Reading, resource::geometry::Asset::Id, resource::material::Asset::Id, resource::texpack::Pack::Id, resource::texpack::Pack::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, resource::texture::Asset::Id, const Shell&, std::span<const Patch>, float radius, float amplitude, float firstLodDistance, integer span, integer cells) -> optional<Quantum>;
             static void setPatches(Writing, Id, std::span<const Patch>);
             static void submit(Reading, Id, system::Device::Id, renderer::CommandBuffer& where);
         };

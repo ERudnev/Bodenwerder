@@ -35,6 +35,7 @@ namespace rmmr
           geometry: #resource::geometry::Runtime
           material: #resource::material::Runtime
           texpack: #resource::texpack::Runtime?
+          texpackLow: #resource::texpack::Runtime?
           heightField: #resource::texture::Runtime
           coverField: #resource::texture::Runtime
           indirect: renderer::IndirectBuffer

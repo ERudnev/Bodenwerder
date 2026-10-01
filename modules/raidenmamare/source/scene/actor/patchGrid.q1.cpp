@@ -44,6 +44,7 @@ namespace rmmr::scene::actor {
                 .material = material,
                 .shader = shader,
                 .texpack = grid.texpack,
+                .texpackLow = grid.texpackLow,
                 .texture3array = {},
                 .heightField = grid.heightField,
                 .coverField = grid.coverField,
@@ -106,7 +107,7 @@ namespace rmmr::scene::actor {
 
     }
 
-    auto PatchGrid::Actions::compose(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id materialId, resource::texpack::Pack::Id packId, resource::texture::Asset::Id heightId, resource::texture::Asset::Id coverId, resource::texture::Asset::Id farAlbedoId, resource::texture::Asset::Id farNormalId, const Shell& shell, std::span<const Patch> patches, float radius, float amplitude, float firstLodDistance, integer span, integer cells) -> optional<Quantum> {
+    auto PatchGrid::Actions::compose(Reading context, resource::geometry::Asset::Id geometryId, resource::material::Asset::Id materialId, resource::texpack::Pack::Id packId, resource::texpack::Pack::Id packLowId, resource::texture::Asset::Id heightId, resource::texture::Asset::Id coverId, resource::texture::Asset::Id farAlbedoId, resource::texture::Asset::Id farNormalId, const Shell& shell, std::span<const Patch> patches, float radius, float amplitude, float firstLodDistance, integer span, integer cells) -> optional<Quantum> {
         const auto device = primaryDevice(context);
         if (not device or span < 2 or cells < 1 or not with<resource::Runtimes>::exists(context, *device))
             return {};
@@ -114,13 +115,14 @@ namespace rmmr::scene::actor {
         const auto geometryFound = runtimes.geometries_id_mapping.find(geometryId);
         const auto materialFound = runtimes.materials_id_mapping.find(materialId);
         const auto packFound = runtimes.texpacks_id_mapping.find(packId);
+        const auto packLowFound = runtimes.texpacks_id_mapping.find(packLowId);
         const auto heightFound = runtimes.textures_id_mapping.find(heightId);
         const auto coverFound = runtimes.textures_id_mapping.find(coverId);
         const auto farAlbedoFound = runtimes.textures_id_mapping.find(farAlbedoId);
         const auto farNormalFound = runtimes.textures_id_mapping.find(farNormalId);
-        if (geometryFound == runtimes.geometries_id_mapping.end() or materialFound == runtimes.materials_id_mapping.end() or packFound == runtimes.texpacks_id_mapping.end() or heightFound == runtimes.textures_id_mapping.end() or coverFound == runtimes.textures_id_mapping.end() or farAlbedoFound == runtimes.textures_id_mapping.end() or farNormalFound == runtimes.textures_id_mapping.end())
+        if (geometryFound == runtimes.geometries_id_mapping.end() or materialFound == runtimes.materials_id_mapping.end() or packFound == runtimes.texpacks_id_mapping.end() or packLowFound == runtimes.texpacks_id_mapping.end() or heightFound == runtimes.textures_id_mapping.end() or coverFound == runtimes.textures_id_mapping.end() or farAlbedoFound == runtimes.textures_id_mapping.end() or farNormalFound == runtimes.textures_id_mapping.end())
             return {};
-        if (not with<resource::geometry::Runtime>::exists(context, geometryFound->second) or not with<resource::material::Runtime>::exists(context, materialFound->second) or not with<resource::texpack::Runtime>::exists(context, packFound->second) or not with<resource::texture::Runtime>::exists(context, heightFound->second) or not with<resource::texture::Runtime>::exists(context, coverFound->second) or not with<resource::texture::Runtime>::exists(context, farAlbedoFound->second) or not with<resource::texture::Runtime>::exists(context, farNormalFound->second))
+        if (not with<resource::geometry::Runtime>::exists(context, geometryFound->second) or not with<resource::material::Runtime>::exists(context, materialFound->second) or not with<resource::texpack::Runtime>::exists(context, packFound->second) or not with<resource::texpack::Runtime>::exists(context, packLowFound->second) or not with<resource::texture::Runtime>::exists(context, heightFound->second) or not with<resource::texture::Runtime>::exists(context, coverFound->second) or not with<resource::texture::Runtime>::exists(context, farAlbedoFound->second) or not with<resource::texture::Runtime>::exists(context, farNormalFound->second))
             return {};
         const auto& geometry = with<resource::geometry::Runtime>::get(context, geometryFound->second);
         if (not geometry.ebo or geometry.index_count <= renderer::Count{0})
@@ -185,6 +187,7 @@ namespace rmmr::scene::actor {
             .geometry = geometryFound->second,
             .material = materialFound->second,
             .texpack = packFound->second,
+            .texpackLow = packLowFound->second,
             .heightField = heightFound->second,
             .coverField = coverFound->second,
             .farAlbedoField = farAlbedoFound->second,

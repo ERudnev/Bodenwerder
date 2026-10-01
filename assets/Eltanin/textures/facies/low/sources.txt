@@ -1,0 +1,50 @@
+# Facies texpack sources (CC0 ambientCG + existing seed). RGB albedo + A roughness.
+
+00_Snow.png	seed (existing)
+01_Glacier.png	cached
+02_DirtyIce.png	seed (existing)
+03_VolatileFrost.png	seed (existing)
+04_Hydrate.png	seed (existing)
+05_Dunite.png	cached
+06_Peridotite.png	cached
+07_Pyroxenite.png	seed (existing)
+08_Komatiite.png	cached
+09_Basalt.png	cached
+10_Gabbro.png	cached
+11_Andesite.png	cached
+12_Granite.png	seed (existing)
+13_Rhyolite.png	cached
+14_Obsidian.png	cached
+15_Anorthosite.png	cached
+16_ClayPan.png	seed (existing)
+17_Laterite.png	seed (existing)
+18_Arenite.png	seed (existing)
+19_Evaporite.png	seed (existing)
+20_Carbonate.png	cached
+21_Chondrite.png	seed (existing)
+22_Tholin.png	seed (existing)
+23_Bitumen.png	seed (existing)
+24_IronMetal.png	cached
+25_NickelMetal.png	seed (existing)
+26_Sulfide.png	cached
+27_SulfurPlains.png	cached
+28_SO2Frost.png	cached
+29_Fumarole.png	seed (existing)
+30_Hematite.png	seed (existing)
+31_Magnetite.png	cached
+32_DesertVarnish.png	cached
+33_BaseMetal.png	seed (existing)
+34_Porphyry.png	cached
+35_PGMLag.png	seed (existing)
+36_REELaterite.png	seed (existing)
+37_Actinide.png	seed (existing)
+38_Pahoehoe.png	cached
+39_Scoria.png	cached
+40_Pumice.png	cached
+41_SilicaSinter.png	cached
+42_RegolithMafic.png	seed (existing)
+43_RegolithFelsic.png	seed (existing)
+44_Breccia.png	cached
+45_Pegmatite.png	seed (existing)
+46_Exotic.png	seed (existing)
+47_Caliche.png	seed (existing)

@@ -93,6 +93,7 @@ namespace rmmr::renderer {
         resource::material::Runtime::Id material;
         resource::shader::Runtime::Id shader;
         base::maybe<resource::texpack::Runtime::Id> texpack;
+        base::maybe<resource::texpack::Runtime::Id> texpackLow;
         base::maybe<resource::texture3array::Runtime::Id> texture3array;
         base::maybe<resource::texture::Runtime::Id> heightField;
         base::maybe<resource::texture::Runtime::Id> coverField;

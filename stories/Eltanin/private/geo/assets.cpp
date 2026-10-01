@@ -59,7 +59,7 @@ namespace eltanin::geo::assets {
         const std::array surfaces{
             SurfaceSpec{.name = "rock", .vertex = "shaders/rock.vert.glsl", .fragment = "shaders/rock.frag.glsl", .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = true, .shadow = true},
             SurfaceSpec{.name = "boulder", .vertex = "shaders/boulder.vert.glsl", .fragment = "shaders/boulder.frag.glsl", .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "minerals"}), .glowSpread = true, .shadow = true},
-            SurfaceSpec{.name = "planet", .vertex = "shaders/planet.vert.glsl", .fragment = "shaders/planet.frag.glsl", .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap", "heightMap", "coverMap", "farAlbedoMap", "farNormalMap"}), .glowSpread = false, .shadow = false},
+            SurfaceSpec{.name = "planet", .vertex = "shaders/planet.vert.glsl", .fragment = "shaders/planet.frag.glsl", .uniforms = ::rmmr::material::Semantics::ids_of({"shadowMap", "albedoMap", "albedoLow", "heightMap", "coverMap", "farAlbedoMap", "farNormalMap"}), .glowSpread = false, .shadow = false},
         };
         for (const auto& spec : surfaces) {
             const auto shader = with<Assets>::add_shader_loader(context, Name::from("Eltanin", spec.name), item<rmmr::resource::shader::Loader>{.vertex = spec.vertex, .fragment = spec.fragment});
@@ -93,9 +93,12 @@ namespace eltanin::geo::assets {
         const auto manager = with<rmmr::resource::Manager>::singleton(context);
         const auto crust = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = Name::from("Eltanin", "crust")});
         with<rmmr::resource::texture3array::Asset>::extend(context, crust, rmmr::resource::texture3array::Asset::Quantum{.layerSize = index3{0, 0, 0}, .capacity = 0});
-        const auto facies = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = Name::from("Eltanin", "facies")});
-        with<rmmr::resource::texpack::Pack>::extend(context, facies, rmmr::resource::texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 48, .layers = {}, .compressed = true, .grayscale = false});
-        with<rmmr::resource::texpack::LoaderCatalog>::extend(context, facies, rmmr::resource::texpack::LoaderCatalog::Quantum{.directory = "textures/facies"});
+        const auto faciesHigh = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = Name::from("Eltanin", "high")});
+        with<rmmr::resource::texpack::Pack>::extend(context, faciesHigh, rmmr::resource::texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 48, .layers = {}, .compressed = true, .grayscale = false});
+        with<rmmr::resource::texpack::LoaderCatalog>::extend(context, faciesHigh, rmmr::resource::texpack::LoaderCatalog::Quantum{.directory = "textures/facies/high"});
+        const auto faciesLow = with<rmmr::resource::Unit_group>::addElement(context, manager, rmmr::resource::Unit::Quantum{.name = Name::from("Eltanin", "low")});
+        with<rmmr::resource::texpack::Pack>::extend(context, faciesLow, rmmr::resource::texpack::Pack::Quantum{.layerSize = index2{1024, 1024}, .capacity = 48, .layers = {}, .compressed = true, .grayscale = false});
+        with<rmmr::resource::texpack::LoaderCatalog>::extend(context, faciesLow, rmmr::resource::texpack::LoaderCatalog::Quantum{.directory = "textures/facies/low"});
         return true;
     }
 

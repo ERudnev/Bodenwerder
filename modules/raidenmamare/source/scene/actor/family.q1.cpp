@@ -188,6 +188,7 @@ namespace rmmr::scene::actor {
                 .material = material,
                 .shader = shader,
                 .texpack = texpack,
+                .texpackLow = {},
                 .texture3array = {},
                 .heightField = {},
                 .coverField = {},

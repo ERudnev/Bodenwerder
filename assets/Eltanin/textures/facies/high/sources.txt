@@ -1,0 +1,50 @@
+# Facies texpack sources (CC0 ambientCG + existing seed). RGB albedo + A roughness.
+
+00_Snow.png	blurred low sibling
+01_Glacier.png	seed (existing)
+02_DirtyIce.png	cached
+03_VolatileFrost.png	cached
+04_Hydrate.png	cached
+05_Dunite.png	seed (existing)
+06_Peridotite.png	seed (existing)
+07_Pyroxenite.png	cached
+08_Komatiite.png	seed (existing)
+09_Basalt.png	seed (existing)
+10_Gabbro.png	seed (existing)
+11_Andesite.png	seed (existing)
+12_Granite.png	cached
+13_Rhyolite.png	seed (existing)
+14_Obsidian.png	seed (existing)
+15_Anorthosite.png	seed (existing)
+16_ClayPan.png	cached
+17_Laterite.png	ambientCG Ground033 + grade + match
+18_Arenite.png	ambientCG Ground054 + match
+19_Evaporite.png	cached
+20_Carbonate.png	seed (existing)
+21_Chondrite.png	cached
+22_Tholin.png	cached
+23_Bitumen.png	cached
+24_IronMetal.png	seed (existing)
+25_NickelMetal.png	cached
+26_Sulfide.png	seed (existing)
+27_SulfurPlains.png	seed (existing)
+28_SO2Frost.png	seed (existing)
+29_Fumarole.png	cached
+30_Hematite.png	cached
+31_Magnetite.png	seed (existing)
+32_DesertVarnish.png	seed (existing)
+33_BaseMetal.png	cached
+34_Porphyry.png	seed (existing)
+35_PGMLag.png	cached
+36_REELaterite.png	ambientCG Ground033 + grade + match
+37_Actinide.png	cached
+38_Pahoehoe.png	seed (existing)
+39_Scoria.png	seed (existing)
+40_Pumice.png	seed (existing)
+41_SilicaSinter.png	seed (existing)
+42_RegolithMafic.png	ambientCG Ground054 + grade + match
+43_RegolithFelsic.png	cached
+44_Breccia.png	seed (existing)
+45_Pegmatite.png	cached
+46_Exotic.png	cached
+47_Caliche.png	cached

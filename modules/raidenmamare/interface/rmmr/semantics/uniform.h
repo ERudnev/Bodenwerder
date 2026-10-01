@@ -57,16 +57,18 @@ namespace rmmr::material {
         // - 1: shadowMap / identiffyMap
         // - 2: selectedMap / heightMap
         // - 3..18: minerals[16] (GL_TEXTURE_3D layers)
+        // - 4: albedoLow (planet close facies; exclusive with roughnessMap)
         // - 5: coverMap (planet field; exclusive with minerals on that unit)
         // - 6: farAlbedoMap (planet field; exclusive with minerals on that unit)
         // - 7: farNormalMap (planet field; exclusive with minerals on that unit)
         // SSBO binding points:
         // - 0: atlasEntries
-        static constexpr auto vocabulary = std::array<Entry, 20>{{
+        static constexpr auto vocabulary = std::array<Entry, 21>{{
             Entry{0, Type::i32, "_undefined", -1},
 
             Entry{109, Type::sampler2d, "shadowMap", 1},
             Entry{110, Type::sampler2dArray, "albedoMap", 0},
+            Entry{120, Type::sampler2dArray, "albedoLow", 4},
             Entry{113, Type::sampler2dArray, "roughnessMap", 4},
             Entry{111, Type::sampler2d, "atlasTexture", 0},
             Entry{112, Type::ssbo, "atlasEntries", 0},

@@ -2,9 +2,6 @@
 
 layout (location = 0) in vec3 aPos;
 
-const float slope5 = 0.0038;
-const float slope15 = 0.034;
-
 layout(std430, binding = 7) readonly buffer ActorStateBuffer {
     mat4 actorModel;
     vec4 actorAlbedoOpacity;
@@ -42,6 +39,7 @@ out vec3 v_worldPos;
 out vec3 v_worldNormal;
 out vec3 v_objectPos;
 out float v_geoBelow;
+flat out vec3 v_belowBlotch;
 flat out uvec3 v_layerPack;
 flat out vec3 v_seed;
 out vec3 v_bary;
@@ -84,6 +82,16 @@ uint paletteAt(int diamond, ivec2 local) {
     local = clamp(local, ivec2(0), ivec2(fieldSpan - 1));
     vec4 cover = texelFetch(u_coverMap, ivec3(local, diamond), 0);
     return uint(cover.r * 255.0 + 0.5) | (uint(cover.g * 255.0 + 0.5) << 8);
+}
+
+vec3 hash33(vec3 p) {
+    p = fract(p * vec3(0.1031, 0.1030, 0.0973));
+    p += dot(p, p.yxz + 33.33);
+    return fract((p.xxy + p.yxx) * p.zyx);
+}
+
+float hashAt(int diamond, ivec2 slot) {
+    return hash33(vec3(float(slot.x), float(slot.y), float(diamond))).x;
 }
 
 void main() {
@@ -145,9 +153,10 @@ void main() {
     vec4 worldPos = actorModel * vec4(objectPos, 1.0);
     v_worldPos = worldPos.xyz;
     v_objectPos = objectPos;
-    v_geoBelow = smoothstep(slope5, slope15, 1.0 - clamp(dot(normal, radial), 0.0, 1.0));
+    v_geoBelow = 1.0 - clamp(dot(normal, radial), 0.0, 1.0);
     v_worldNormal = normalize(mat3(transpose(inverse(actorModel))) * normal);
     v_layerPack = uvec3(paletteAt(tile.loc.x, slotA), paletteAt(tile.loc.x, slotB), paletteAt(tile.loc.x, slotC));
+    v_belowBlotch = vec3(hashAt(tile.loc.x, slotA), hashAt(tile.loc.x, slotB), hashAt(tile.loc.x, slotC));
     v_seed = objectPos;
     v_fieldUv = vec2(local) / float(max(fieldSpan - 1, 1));
     v_fieldDiamond = tile.loc.x;

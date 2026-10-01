@@ -497,9 +497,10 @@ namespace eltanin::planet {
             context.refuse("eltanin::planet::Planet::place: patchGrid geometry missing");
             return;
         }
-        const auto facies = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "facies"));
-        if (not facies) {
-            context.refuse("eltanin::planet::Planet::place: facies texpack missing");
+        const auto faciesHigh = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "high"));
+        const auto faciesLow = with<resource::Assets>::find<resource::texpack::Pack>(context, resource::Unit::Name::from("Eltanin", "low"));
+        if (not faciesHigh or not faciesLow) {
+            context.refuse("eltanin::planet::Planet::place: facies high/low texpack missing");
             return;
         }
         const auto manager = with<resource::Manager>::singleton(context);
@@ -539,7 +540,7 @@ namespace eltanin::planet {
             return;
         }
         const auto patches = coarsePatches(heights.pack);
-        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *facies, heightId, coverId, farAlbedoId, farNormalId, icosaShell(), patches, passport.radius, runtime.reliefAmplitude, firstLodDistance(heights.pack, passport.radius), heights.pack.edgeVertices(), patchCells);
+        auto gridQuantum = with<scene::actor::PatchGrid>::compose(context, *grid, *material, *faciesHigh, *faciesLow, heightId, coverId, farAlbedoId, farNormalId, icosaShell(), patches, passport.radius, runtime.reliefAmplitude, firstLodDistance(heights.pack, passport.radius), heights.pack.edgeVertices(), patchCells);
         if (not gridQuantum) {
             context.refuse("eltanin::planet::Planet::place: patch grid compose failed");
             return;
